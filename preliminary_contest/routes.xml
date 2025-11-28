@@ -1,0 +1,71 @@
+<routes>
+<!-- 增加危险驾驶员类型 -->
+<!--<vType id="dangerous_driver" accel="3.0" decel="6.0" sigma="1.0" tau="0.3" minGap="0.5" speedFactor="1.5" speedDev="0.2" color="1,0,0"/>-->
+
+<vTypeDistribution id="penetration0.05">
+    <vType id="HV" accel="0.8" decel="4.5" sigma="0.5" length="5" maxSpeed="30" color="1,0,0" lcKeepRight="0" lcStrategic="1" probability="0.75"> </vType>
+    <vType id="CV" accel="0.8" decel="4.5" sigma="0.5" length="5" maxSpeed="30" color="0,1,0" lcKeepRight="0" lcStrategic="1" probability="0.25"> </vType>
+    <!-- 危险驾驶员比例设为0 -->
+<!--    <vType id="DV" accel="3.0" decel="6.0" sigma="1.0" tau="0.3" minGap="0.5" speedFactor="1.5" speedDev="0.2" color="1,0,0" lcKeepRight="0" lcStrategic="1" probability="0.00"> </vType>-->
+</vTypeDistribution>
+
+<!-- ==================== 正向主路路线 ==================== -->
+<!-- 完整走完主路 -->
+<route id="main_full" edges="E1 E2 E3 E5 E6 E7 E8 E9 E10 E11 E12 E13"/>
+<!-- 从E24匝道驶出 -->
+<route id="main_to_e24" edges="E1 E2 E3 E5 E6 E7 E24"/>
+<!-- 从E16匝道驶出 -->
+<route id="main_to_e16" edges="-E13 -E12 -E11 E16 "/>
+<!-- 从E18匝道驶出 -->
+<route id="main_to_e18" edges="E1 E2 E3 E5 E6 E7 E8 E9 E10 E11 E12 E18"/>
+<!-- 从E20匝道驶出 -->
+<route id="main_to_e20" edges="-E13 E20"/>
+<!-- ==================== 反向路线（避开dead_end J18）==================== -->
+<!-- 从E13反向行驶到E1 -->
+<route id="reverse_from_e12" edges="-E13 -E12 -E11 -E10 -E9 -E8 -E7 -E6 -E5 -E3 -E2 -E1"/>
+<!-- ==================== 支路汇入路线 ==================== -->
+<!-- E23汇入后反向行驶 -->
+<route id="e23_to_reverse" edges="E23 -E2 -E1"/>
+<!-- E15汇入后正向行驶 -->
+<route id="e15_to_main" edges="E15 E10 E11 E12 E13"/>
+<!-- E17汇入（短程） -->
+<route id="e17_short" edges="E17 -E10 -E9 -E8 -E7 -E6 -E5 -E3 -E2 -E1"/>
+<!-- E19汇入（短程） -->
+<route id="e19_short" edges="E19 -E12 -E11 -E10 -E9 -E8 -E7 -E6 -E5 -E3 -E2 -E1"/>
+
+<!-- ==================== 流量定义 ==================== -->
+ 正向主路流量：1200 veh/h
+<flow id="f_main_full" begin="0" end="3600" vehsPerHour="800" type="penetration0.05" route="main_full" departLane="best" departSpeed="max"/>
+<flow id="f_main_e24" begin="0" end="3600" vehsPerHour="500" type="penetration0.05" route="main_to_e24" departLane="best" departSpeed="max"/>
+<flow id="f_main_e16" begin="0" end="3600" vehsPerHour="1000" type="penetration0.05" route="main_to_e16" departLane="best" departSpeed="max"/>
+<flow id="f_main_e18" begin="0" end="3600" vehsPerHour="400" type="penetration0.05" route="main_to_e18" departLane="best" departSpeed="max"/>
+<flow id="f_main_e20" begin="0" end="3600" vehsPerHour="200" type="penetration0.05" route="main_to_e20" departLane="best" departSpeed="max"/>
+
+
+<!--&lt;!&ndash; 反向流量：增加到1200 veh/h - 这会增加J15和J17的负担 &ndash;&gt;-->
+<flow id="f_reverse" begin="0" end="3600" vehsPerHour="1000" type="penetration0.05" route="reverse_from_e12" departLane="best" departSpeed="max"/>
+
+<!-- 支路汇入流量 - 增加E17和E19的流量，这直接影响J15和J17交叉口 -->
+<flow id="f_e23" begin="0" end="3600" vehsPerHour="1500" type="penetration0.05" route="e23_to_reverse" departLane="best" departSpeed="max"/>
+<flow id="f_e15" begin="0" end="3600" vehsPerHour="1500" type="penetration0.05" route="e15_to_main" departLane="best" departSpeed="max"/>
+
+ 增加E17汇入流量，直接影响J15交叉口
+<flow id="f_e17" begin="0" end="3600" vehsPerHour="1500" type="penetration0.05" route="e17_short" departLane="best" departSpeed="max"/>
+
+<!-- 增加E19汇入流量，直接影响J17交叉口 -->
+<flow id="f_e19" begin="0" end="3600" vehsPerHour="1500" type="penetration0.05" route="e19_short" departLane="best" departSpeed="max"/>
+
+
+
+<!--&lt;!&ndash; 在J15和J17交叉口附近增加大量车辆，使用departPos="last"使车辆堆积 &ndash;&gt;-->
+<!--<flow id="f_j15_congestion" begin="0" end="3600" vehsPerHour="500" type="penetration0.05" route="e17_short" departLane="0" departPos="last" departSpeed="0"/>-->
+<!--<flow id="f_j17_congestion" begin="0" end="3600" vehsPerHour="500" type="penetration0.05" route="e19_short" departLane="0" departPos="last" departSpeed="0"/>-->
+
+
+
+<!--&lt;!&ndash; 修改的碰撞车辆类型，准备用于Python脚本识别 &ndash;&gt;-->
+<!--<vType id="collision_color" accel="0.8" decel="4.5" sigma="0.5" length="5" maxSpeed="30" color="0,0,1" guiShape="passenger/sedan">-->
+<!--    <param key="has.collision.detector" value="true"/>-->
+<!--    <param key="has.blinking.flashers" value="true"/>-->
+<!--</vType>-->
+</routes>
