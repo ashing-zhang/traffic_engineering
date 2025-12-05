@@ -661,7 +661,7 @@ def main():
         sumo_cfg = sys.argv[1]
     else:
         # 方式2: 直接指定配置文件路径
-        sumo_cfg = r"您的sumo.sumocfg路径"
+        sumo_cfg = r"preliminary_contest/sumo.sumocfg"
 
     # 仿真参数设置
     MAX_STEPS = 3600 # 最大仿真步数
