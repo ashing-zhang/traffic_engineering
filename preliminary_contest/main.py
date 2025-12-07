@@ -1,5 +1,22 @@
+"""
+模块化运行指南
+
+用法
+- 在项目根目录运行模块：
+  python -m preliminary_contest.main
+
+- 指定 SUMO 配置文件路径：
+  python -m preliminary_contest.main preliminary_contest/sumo.sumocfg
+
+说明
+- 该脚本遵循模块化运行方式，避免直接执行文件路径。
+- 如需传入自定义配置文件，请将 `.sumocfg` 的相对或绝对路径作为第一个参数传入。
+- 运行结束后将生成 `competition_results/submit.xlsx`，用于评测提交。
+"""
+
 import os
 import sys
+import shutil
 import traci
 import pandas as pd
 import xml.etree.ElementTree as ET
@@ -197,20 +214,61 @@ class SUMOCompetitionFramework:
         self.parse_config()
         self.parse_routes()
 
-        # 启动SUMO
-        sumo_binary = "sumo-gui" if use_gui else "sumo"
-        sumo_cmd = [
-            sumo_binary,
-            "-c", self.sumo_cfg_path,
-            "--no-warnings", "true",
-            "--duration-log.statistics", "true"
-        ]
+        try:
+            def resolve_binary(prefer_gui: bool) -> tuple:
+                try:
+                    from sumolib import checkBinary
+                    name = 'sumo-gui' if prefer_gui else 'sumo'
+                    return checkBinary(name), name
+                except Exception:
+                    name = 'sumo-gui' if prefer_gui else 'sumo'
+                    env_home = os.environ.get('SUMO_HOME')
+                    if env_home:
+                        p1 = os.path.join(env_home, 'bin', name)
+                        p2 = os.path.join(env_home, 'bin', name + '.exe')
+                        if os.path.isfile(p1):
+                            return p1, name
+                        if os.path.isfile(p2):
+                            return p2, name
+                    p3 = shutil.which(name)
+                    p4 = shutil.which(name + '.exe')
+                    if p3:
+                        return p3, name
+                    if p4:
+                        return p4, name
+                    return None, name
+
+            sumo_binary, chosen = resolve_binary(True if use_gui else False)
+            if not sumo_binary and use_gui:
+                print("⚠️ 未找到 sumo-gui，尝试使用 CLI 模式运行")
+                sumo_binary, chosen = resolve_binary(False)
+                use_gui = False
+            if not sumo_binary:
+                env_home = os.environ.get('SUMO_HOME', '')
+                print("❌ 无法定位SUMO可执行文件")
+                print(f"SUMO_HOME: {env_home if env_home else '未设置'}")
+                print("请确保已安装 SUMO，并已将 SUMO_HOME\\bin 加入 PATH")
+                return False
+
+            sumo_cmd = [
+                sumo_binary,
+                "-c", self.sumo_cfg_path,
+                "--no-warnings", "true",
+                "--duration-log.statistics", "true"
+            ]
+            print(f"✓ 使用二进制: {sumo_binary} ({'GUI' if use_gui else 'CLI'})")
+        except Exception as e:
+            print(f"❌ 无法定位SUMO可执行文件: {e}")
+            print("请确保已安装 SUMO，并已设置系统 PATH 或 SUMO_HOME 环境变量。")
+            return False
 
         try:
             traci.start(sumo_cmd)
             print(f"✓ SUMO启动成功 (模式: {'GUI' if use_gui else 'CLI'})")
         except Exception as e:
             print(f"❌ SUMO启动失败: {e}")
+            print(f"启动命令: {' '.join(map(str, sumo_cmd))}")
+            print("若缺少 GUI，可尝试使用 CLI 模式运行：在入口处将 use_gui=False")
             return False
 
         # 初始化红绿灯
@@ -638,13 +696,14 @@ class SUMOCompetitionFramework:
 
         finally:
             traci.close()
+        print(f'len(self.vehicle_data): {len(self.vehicle_data)}')
 
         # 第三部分: 保存数据到Excel
         print(f"\n{'=' * 70}")
-        result = self.save_to_excel()
+        # result = self.save_to_excel()
 
         print(f"\n✅ 仿真完成!")
-        print(f"\n可使用此Excel文件进行评测提交: {result['excel_file']}")
+        # print(f"\n可使用此Excel文件进行评测提交: {result['excel_file']}")
 
         return True
 
@@ -661,11 +720,12 @@ def main():
         sumo_cfg = sys.argv[1]
     else:
         # 方式2: 直接指定配置文件路径
-        sumo_cfg = r"preliminary_contest/sumo.sumocfg"
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        sumo_cfg = os.path.join(base_dir, "sumo.sumocfg")
 
     # 仿真参数设置
     MAX_STEPS = 3600 # 最大仿真步数
-    USE_GUI = True  # 是否使用GUI界面
+    USE_GUI = False  # 是否使用GUI界面
 
     # ========================================================================
 
